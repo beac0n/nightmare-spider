@@ -1,9 +1,9 @@
 const fs = require('fs-extra')
 const path = require('path')
-const URL = require('url')
 const kill = require('tree-kill')
 const request = require('request-promise')
 const cheerio = require('cheerio')
+const normalizeUrl = require('normalize-url')
 
 fs.emptyDirSync(path.join(__dirname, 'data'))
 
@@ -12,90 +12,83 @@ require('nightmare-download-manager')(Nightmare)
 
 const {domain, ssl, start, show} = require(process.argv[2] || './config.json')
 
-
-const alreadyProcessed = {}
+const urlsReceived = {}
 const urlsTodo = {}
 
 const httpOrHttps = new RegExp('^https?://', 'g')
 const dataDirPath = path.join(__dirname, 'data')
-const getFilePath = (url) => path.join(dataDirPath, ...url.replace(httpOrHttps, '').split('/')) + '.data'
+const getFilePath = (url) => path.join(dataDirPath, ...url.replace(httpOrHttps, '').split('/'))
+    + (!url.endsWith('.png') ? '.data' : '')
 
 const domainRegex = new RegExp('^https?://' + domain + '[^\\.]')
 const subDomainRegex = new RegExp('^https?://.*\\.' + domain + '[^\\.]')
 const matchesDomain = (href) => href.match(domainRegex) || href.match(subDomainRegex)
 
-const burnUrl = (url) => {
-    delete urlsTodo[url]
-}
-
-
 const failLog = (toLog, where) => console.log('FAIL:', where, toLog)
 
-const log = (url, todos) => console.log(`done: ${Object.keys(alreadyProcessed).length} | todo: ${todos} | current: ${url}`)
+let counter = 0
+const log = (url) => console.log(`${counter++} current: ${url}`)
 
-const visitHtmlHref = (href) => matchesDomain(href) && !href.includes('#') && !alreadyProcessed[href]
+const visitHtmlHref = (href) => matchesDomain(href) && !href.includes('#') && !urlsTodo[href]
 
-const mainNightmare = Nightmare({show})
+const fixUrl = (url) => {
+    let newUrl = url
+    newUrl = newUrl.trim()
+    if (!newUrl.startsWith('http')) {
+        newUrl = normalizeUrl((ssl ? 'https' : 'http') + '://' + domain + '/' + newUrl)
+    }
+
+    return newUrl
+}
+
+const mainNightmare = () => Nightmare(
+    {
+        show,
+        ignoreDownloads: true,
+    })
+    .downloadManager()
     .on('did-get-response-details',
         (event, status, newUrl, originalUrl, httpResponseCode, requestMethod, referrer, headers, resourceType) => {
-            if (resourceType === 'xhr' && requestMethod === 'GET' && matchesDomain(originalUrl)) {
+            if (resourceType === 'xhr' && requestMethod === 'GET' && matchesDomain(fixUrl(originalUrl))) {
                 request({uri: originalUrl, headers})
                     .then((json) => fs.outputFile(getFilePath(originalUrl), json))
                     .catch(() => failLog(originalUrl, 'XHR'))
             }
         })
-    .on('download', (state, downloadItem) => {
-        if (state === 'started') {
-            const {url} = downloadItem
-            burnUrl(url)
-            mainNightmare.emit('download', getFilePath(url), downloadItem)
-        }
-    })
-const htmlComplete = 'HTMLComplete'
-const openSite = () => {
-    const urlsTodoArray = Object.keys(urlsTodo)
-    if (urlsTodoArray.length === 0) {
-        console.log('done')
-        kill(process.pid)
-        return
-    }
 
-    const url = URL.format(urlsTodoArray.pop())
-    console.log(url)
-    if (alreadyProcessed[url]) {
-        return
-    }
+const openSite = (url) => {
+    log(url)
+    urlsReceived[url] = true
 
-    log(url, urlsTodoArray.length)
-
-    const filePath = getFilePath(url)
-    alreadyProcessed[url] = mainNightmare
+    return mainNightmare()
         .goto(url)
-        .html(filePath, htmlComplete)
-        .then(() => fs.readFile(filePath))
-        .then((file) => file.toString())
+        .html(getFilePath(url), 'HTMLComplete')
+        .evaluate(() => document.body.outerHTML)
+        .end()
         .then((html) => {
             const $ = cheerio.load(html);
             const hrefs = []
-            $('a[href]').each((index, element) => element.attribs.href && hrefs.push(element.attribs.href))
+            $('a[href]').each((index, element) => {
+                hrefs.push(fixUrl(element.attribs.href))
+            })
             return hrefs
         })
         .then((hrefs) => {
             hrefs.forEach((href) => {
                 if (visitHtmlHref(href)) {
-                    urlsTodo[href] = true
+                    urlsTodo[href] = openSite(href)
                 }
             })
-
-            burnUrl(url)
         })
         .catch((error) => {
-            burnUrl(url)
             if (error.details !== 'ERR_ABORTED') {
                 failLog(error, url)
             }
         })
+        .then(() => {
+            urlsTodo[url] = 'done'
+        })
 }
 
-urlsTodo[URL.format(`http${ssl ? 's' : ''}://${start}`)] = true
-setInterval(openSite, 0)
+const startUrl = normalizeUrl(`http${ssl ? 's' : ''}://${start}`)
+urlsTodo[startUrl] = openSite(startUrl)
