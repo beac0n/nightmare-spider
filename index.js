@@ -10,7 +10,7 @@ fs.emptyDirSync(path.join(__dirname, 'data'))
 const Nightmare = require('nightmare')
 require('nightmare-download-manager')(Nightmare)
 
-const {domain, ssl, start, show} = require(process.argv[2] || './config.json')
+const {domain, ssl, start} = require(process.argv[2] || './config.json')
 
 const urlsReceived = {}
 const urlsTodo = {}
@@ -43,7 +43,7 @@ const fixUrl = (url) => {
 
 const mainNightmare = () => Nightmare(
     {
-        show,
+        show: false, // DO NOT SET THIS TO TRUE!!!
         ignoreDownloads: true,
     })
     .downloadManager()

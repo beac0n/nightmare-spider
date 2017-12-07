@@ -1,6 +1,5 @@
 {
   "ssl": false,
-  "show": false,
   "domain": "schempp.xyz",
   "start": "schempp.xyz"
 }
