@@ -44,7 +44,7 @@ const fixUrl = (url) => {
 const mainNightmare = () => Nightmare(
     {
         show: false, // DO NOT SET THIS TO TRUE!!!
-        ignoreDownloads: true,
+        ignoreDownloads: true, // TODO: download stuff...
     })
     .downloadManager()
     .on('did-get-response-details',
@@ -74,21 +74,23 @@ const openSite = (url) => {
             return hrefs
         })
         .then((hrefs) => {
-            hrefs.forEach((href) => {
+            const hrefsLength = hrefs.length
+            for(let i = 0; i < hrefsLength; ++i) {
+                const href = hrefs[i]
                 if (visitHtmlHref(href)) {
+                    urlsTodo[href] = 'pending'
                     urlsTodo[href] = openSite(href)
                 }
-            })
+            }
         })
         .catch((error) => {
             if (error.details !== 'ERR_ABORTED') {
                 failLog(error, url)
             }
         })
-        .then(() => {
-            urlsTodo[url] = 'done'
-        })
+        .then(() => 'done')
 }
 
 const startUrl = normalizeUrl(`http${ssl ? 's' : ''}://${start}`)
 urlsTodo[startUrl] = openSite(startUrl)
+
