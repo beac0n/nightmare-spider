@@ -1,5 +1,5 @@
 {
-  "ssl": false,
+  "ssl": true,
   "domain": "schempp.xyz",
   "start": "schempp.xyz"
 }
