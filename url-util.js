@@ -1,30 +1,37 @@
-const normalizeUrl = require('normalize-url')
+const { URL } = require('url')
+const normalizeUrlBase = require('normalize-url')
+const normalizeUrl = (url) => normalizeUrlBase(url, {
+    stripWWW: false,
+})
 
 const {domain, ssl, start} = require(process.argv[2] || './config.json')
 
-const domainRegex = new RegExp('^https?://' + domain + '[^\\.]')
-const subDomainRegex = new RegExp('^https?://.*\\.' + domain + '[^\\.]')
-const matchesUrl = (url) => url.match(domainRegex) || url.match(subDomainRegex)
+const HTTP = 'http'
+const HTTPS = 'https'
+const ENC_SCHEME = (ssl ? HTTPS : HTTP)
+const BASE = `${ENC_SCHEME}://${domain}/`
+const getRealHref = (url, pathname) => new URL(url, BASE + pathname).href
 
-const fixUrl = (url) => {
-    let newUrl = url
-    newUrl = newUrl.trim()
-    if (!newUrl.startsWith('http')) {
-        if (newUrl.startsWith('//')) { // same encryption
-            newUrl = normalizeUrl((ssl ? 'https' : 'http') + ':' + newUrl)
-        } else if (newUrl.includes('.')) { // subdomain
-            newUrl = normalizeUrl((ssl ? 'https' : 'http') + '://' + newUrl)
-        } else { // path
-            newUrl = normalizeUrl((ssl ? 'https' : 'http') + '://' + domain + '/' + newUrl)
-        }
+const domainRegex = new RegExp('^' + ENC_SCHEME + '?://' + domain + '[^\\.]')
+const subDomainRegex = new RegExp('^' + ENC_SCHEME + '?://.*\\.' + domain + '[^\\.]')
+const urlMatchesDomain = (url) => domainRegex.test(url) || subDomainRegex.test(url)
+
+const fixUrl = (url, pathname) => {
+
+    let newUrl = url.trim()
+    if (newUrl.startsWith(HTTP)) { // this one is prop. okay, normalize anyway
+        return normalizeUrl(newUrl)
     }
 
-    return newUrl
+    return normalizeUrl(getRealHref(newUrl, pathname))
 }
+
+const XHR = 'xhr'
+const GET = 'GET'
 
 module.exports = {
     fix: fixUrl,
-    shouldVisit: (url) => matchesUrl(url) && !url.includes('#') && !global.urlsTodo[url],
-    getStart: () => normalizeUrl(`http${ssl ? 's' : ''}://${start}`),
-    shouldDownloadUrl: (resourceType, requestMethod, url) => resourceType === 'xhr' && requestMethod === 'GET' && matchesUrl(fixUrl(url))
+    shouldVisit: (url) => urlMatchesDomain(url) && !global.urlsTodo[url],
+    shouldDownload: (resourceType, requestMethod, url) => resourceType === XHR && requestMethod === GET && urlMatchesDomain(url),
+    startUrl: normalizeUrl(ENC_SCHEME + '://' + start),
 }

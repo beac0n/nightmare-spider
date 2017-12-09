@@ -19,7 +19,7 @@ const saveType = 'HTMLComplete'
 const openSite = (url, retryTimes = 0) => nightmareUtil.create()
     .goto(url)
     .html(pathUtil.getFilePath(url), saveType)
-    .evaluate(() => document.body.outerHTML)
+    .evaluate(() => ({html: document.body.outerHTML, pathname: document.location.pathname}))
     .end()
     .then(parserUtil.getUrls)
     .then((urls) => {
@@ -31,7 +31,7 @@ const openSite = (url, retryTimes = 0) => nightmareUtil.create()
             }
         }
     })
-    .then(() => 'done')
+    .then(() => messages.done)
     .catch((error) => {
         if (errorUtil.isTimeout(error)) {
             return openSiteAndSet(url, retryTimes + 1, messages.retry)
@@ -54,4 +54,4 @@ const openSiteAndSet = (url, retryTimes, preMessage) => {
     global.urlsTodo[url] = openSite(url, retryTimes)
 }
 
-openSiteAndSet(urlUtil.getStart(), 0, messages.pending)
+openSiteAndSet(urlUtil.startUrl, 0, messages.pending)

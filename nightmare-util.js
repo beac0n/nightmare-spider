@@ -15,15 +15,17 @@ module.exports = {
             paths: {
                 userData: pathUtil.downloads
             },
-            // ignoreDownloads: true, // TODO: download stuff...
+            ignoreDownloads: true, // TODO: download stuff...
         })
         .downloadManager()
         .on('did-get-response-details',
             (event, status, newUrl, originalUrl, httpResponseCode, requestMethod, referrer, headers, resourceType) => {
-                if (urlUtil.shouldDownloadUrl(resourceType, requestMethod, originalUrl)) {
+
+                if (urlUtil.shouldDownload(resourceType, requestMethod, urlUtil.fix(originalUrl))) {
+                    logUtil.log(resourceType, originalUrl)
                     request({uri: originalUrl, headers})
                         .then((json) => fs.outputFile(pathUtil.getFilePath(originalUrl), json))
-                        .catch(() => logUtil.fail(originalUrl, 'XHR'))
+                        .catch(() => logUtil.fail(resourceType, originalUrl))
                 }
             })
 

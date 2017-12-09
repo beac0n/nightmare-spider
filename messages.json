@@ -1,4 +1,5 @@
 {
   "retry": "pending - retry",
-  "pending": "pending"
+  "pending": "pending",
+  "done": "done"
 }
