@@ -1,6 +1,4 @@
 const kill = require('tree-kill')
-
-
 const Nightmare = require('nightmare')
 require('nightmare-download-manager')(Nightmare)
 
@@ -12,12 +10,15 @@ const errorUtil = require('./error-util')
 
 const messages = require('./messages')
 
-const openSite = (url, retryTimes = 0, node) => Nightmare(nightmareUtil.nightmareConfig)
+const PromisePoolWrapper = require('./promise-pool-wrapper')
+const wrapper = PromisePoolWrapper.create(1)
+
+const openSite = (url, retryTimes = 0, node) => wrapper(() => Nightmare(nightmareUtil.nightmareConfig)
     .downloadManager()
     .on(nightmareUtil.DID_GET_RESPONSE_DETAILS, nightmareUtil.didGetResponseDetailsEventHandler)
     .goto(url)
-    .html(pathUtil.getFilePath(url), nightmareUtil.saveType)
-    .evaluate(nightmareUtil.evaluate)
+    .html(pathUtil.getFilePath(url), nightmareUtil.htmlSaveType)
+    .evaluate(nightmareUtil.evaluateCallback)
     .end()
     .then(({html, pathname}) => {
         let href = nightmareUtil.hrefRegex.exec(html)
@@ -39,19 +40,15 @@ const openSite = (url, retryTimes = 0, node) => Nightmare(nightmareUtil.nightmar
         } else {
             return JSON.stringify(error)
         }
-    })
+    }))
 
-
-const openSiteAndSet = (url, retryTimes, preMessage, parentNode) => {
-    logUtil.log(preMessage, url)
-
-    if (preMessage) {
-        global.urlsTodo[url] = preMessage
-    }
+const openSiteAndSet = (url, retryTimes, preMessage = messages.pending, parentNode) => {
+    //logUtil.log(preMessage, url)
 
     const node = newNode(url)
     addChild(parentNode, node)
 
+    global.urlsTodo[url] = preMessage
     global.urlsTodo[url] = openSite(url, retryTimes, node)
 }
 
@@ -62,8 +59,6 @@ global.urlsTodo = {}
 global.tree = newNode()
 global.xhrs = []
 
-
-
 process.on('exit', () => {
     logUtil.infoOnce()
 })
@@ -73,7 +68,6 @@ process.on('SIGINT', () => {
     logUtil.kill()
     kill(process.pid)
 })
-
 
 pathUtil.prepare()
 

@@ -9,8 +9,8 @@ const messages = require('./messages')
 
 module.exports = {
     hrefRegex: /href="(\s*)([^"\s]*)(\s*)"/ig,
-    saveType: 'HTMLComplete',
-    evaluate: () => ({html: document.body.outerHTML, pathname: document.location.pathname}),
+    htmlSaveType: 'HTMLComplete',
+    evaluateCallback: () => ({html: document.body.outerHTML, pathname: document.location.pathname}),
     nightmareConfig: {
         show: false, // DO NOT SET THIS TO TRUE!!!
         paths: {
