@@ -2,7 +2,6 @@ const fs = require('fs-extra')
 const request = require('request-promise')
 
 const urlUtil = require('./url-util.js')
-const logUtil = require('./log-util.js')
 const pathUtil = require('./path-util.js')
 const messages = require('./messages')
 
@@ -27,10 +26,13 @@ module.exports = {
             global.urlsTodo[downloadUrl] = messages.pending
             global.urlsTodo[downloadUrl] = request({uri: originalUrl, headers})
                 .then((data) => fs.outputFile(pathUtil.getFilePath(originalUrl), data))
-                .catch(() => logUtil.fail(resourceType, originalUrl))
                 .then(() => {
-                    global.xhrs.push(originalUrl)
-
+                    global.xhrs[originalUrl] = messages.done
+                    return messages.done
+                })
+                .catch((reason) => {
+                    global.xhrs[originalUrl] = reason
+                    return reason
                 })
         }
     }

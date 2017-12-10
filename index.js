@@ -11,7 +11,7 @@ const errorUtil = require('./error-util')
 const messages = require('./messages')
 
 const PromisePoolWrapper = require('./promise-pool-wrapper')
-const wrapper = PromisePoolWrapper.create(1)
+const wrapper = PromisePoolWrapper.create(20)
 
 const openSite = (url, retryTimes = 0, node) => wrapper(() => Nightmare(nightmareUtil.nightmareConfig)
     .downloadManager()
@@ -57,7 +57,7 @@ const addChild = (node, child) => node.nodes.push(child)
 
 global.urlsTodo = {}
 global.tree = newNode()
-global.xhrs = []
+global.xhrs = {}
 
 process.on('exit', () => {
     logUtil.infoOnce()
