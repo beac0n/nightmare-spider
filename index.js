@@ -1,6 +1,5 @@
-const fs = require('fs-extra')
 const kill = require('tree-kill')
-const archy = require('archy')
+
 
 const Nightmare = require('nightmare')
 require('nightmare-download-manager')(Nightmare)
@@ -13,28 +12,12 @@ const errorUtil = require('./error-util')
 
 const messages = require('./messages')
 
-process.on('SIGINT', () => {
-    console.log('\nKILLING...')
-    kill(process.pid)
-})
-
-fs.emptyDirSync(pathUtil.data)
-fs.emptyDirSync(pathUtil.downloads)
-
-const newNode = (label = '') => ({label, nodes: []})
-const addChild = (node, child) => node.nodes.push(child)
-
-global.urlsTodo = {}
-global.tree = newNode()
-global.xhrs = []
-
-const evaluate = () => ({html: document.body.outerHTML, pathname: document.location.pathname});
 const openSite = (url, retryTimes = 0, node) => Nightmare(nightmareUtil.nightmareConfig)
     .downloadManager()
-    .on(nightmareUtil.didGetResponseDetails, nightmareUtil.didGetResponseDetailsEventHandler)
+    .on(nightmareUtil.DID_GET_RESPONSE_DETAILS, nightmareUtil.didGetResponseDetailsEventHandler)
     .goto(url)
     .html(pathUtil.getFilePath(url), nightmareUtil.saveType)
-    .evaluate(evaluate)
+    .evaluate(nightmareUtil.evaluate)
     .end()
     .then(({html, pathname}) => {
         let href = nightmareUtil.hrefRegex.exec(html)
@@ -72,10 +55,26 @@ const openSiteAndSet = (url, retryTimes, preMessage, parentNode) => {
     global.urlsTodo[url] = openSite(url, retryTimes, node)
 }
 
-openSiteAndSet(urlUtil.startUrl, 0, messages.pending, global.tree)
+const newNode = (label = '') => ({label, nodes: []})
+const addChild = (node, child) => node.nodes.push(child)
+
+global.urlsTodo = {}
+global.tree = newNode()
+global.xhrs = []
+
+
 
 process.on('exit', () => {
-    console.log(archy(global.tree.nodes[0]))
-    console.log('\n\n')
-    console.log(global.xhrs)
+    logUtil.infoOnce()
 })
+
+process.on('SIGINT', () => {
+    logUtil.infoOnce()
+    logUtil.kill()
+    kill(process.pid)
+})
+
+
+pathUtil.prepare()
+
+openSiteAndSet(urlUtil.startUrl, 0, messages.pending, global.tree)

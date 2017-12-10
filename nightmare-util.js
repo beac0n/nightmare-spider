@@ -10,6 +10,7 @@ const messages = require('./messages')
 module.exports = {
     hrefRegex: /href="(\s*)([^"\s]*)(\s*)"/ig,
     saveType: 'HTMLComplete',
+    evaluate: () => ({html: document.body.outerHTML, pathname: document.location.pathname}),
     nightmareConfig: {
         show: false, // DO NOT SET THIS TO TRUE!!!
         paths: {
@@ -17,7 +18,7 @@ module.exports = {
         },
         ignoreDownloads: true, // TODO: download stuff...
     },
-    didGetResponseDetails: 'did-get-response-details',
+    DID_GET_RESPONSE_DETAILS: 'did-get-response-details',
     didGetResponseDetailsEventHandler: (event, status, newUrl, originalUrl, httpResponseCode, requestMethod, referrer, headers, resourceType) => {
         if (urlUtil.shouldDownload(resourceType, requestMethod, originalUrl)) {
             //logUtil.log(resourceType, originalUrl)
