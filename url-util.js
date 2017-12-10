@@ -27,11 +27,14 @@ const fixUrl = (url, pathname) => {
     return normalizeUrl(getRealHref(newUrl, pathname))
 }
 
+const getDownloadUrl =(url) => 'DOWNLOAD' + url
+
 module.exports = {
     fix: fixUrl,
+    getDownloadUrl,
     shouldVisitFixed: (url) => urlMatchesDomain(url) && !global.urlsTodo[url],
     shouldDownload: (resourceType, requestMethod, url) => {
-        return !global.urlsTodo['DOWNLOAD ' + url] && resourceType === XHR && requestMethod === GET && urlMatchesDomain(fixUrl(url))
+        return !global.urlsTodo[getDownloadUrl(url)] && resourceType === XHR && requestMethod === GET && urlMatchesDomain(fixUrl(url))
     },
     startUrl: normalizeUrl(ENC_SCHEME + '://' + start),
 }
