@@ -4,29 +4,29 @@ const request = require('request-promise')
 const urlUtil = require('./url-util.js')
 const logUtil = require('./log-util.js')
 const pathUtil = require('./path-util.js')
+const messages = require('./messages')
 
-const Nightmare = require('nightmare')
-require('nightmare-download-manager')(Nightmare)
 
 module.exports = {
-    create: () => Nightmare(
-        {
-            show: false, // DO NOT SET THIS TO TRUE!!!
-            paths: {
-                userData: pathUtil.downloads
-            },
-            ignoreDownloads: true, // TODO: download stuff...
-        })
-        .downloadManager()
-        .on('did-get-response-details',
-            (event, status, newUrl, originalUrl, httpResponseCode, requestMethod, referrer, headers, resourceType) => {
+    nightmareConfig: {
+        show: false, // DO NOT SET THIS TO TRUE!!!
+        paths: {
+            userData: pathUtil.downloads
+        },
+        ignoreDownloads: true, // TODO: download stuff...
+    },
+    didGetResponseDetails: 'did-get-response-details',
+    didGetResponseDetailsEventHandler: (event, status, newUrl, originalUrl, httpResponseCode, requestMethod, referrer, headers, resourceType) => {
+        if (urlUtil.shouldDownload(resourceType, requestMethod, originalUrl)) {
+            //logUtil.log(resourceType, originalUrl)
+            global.urlsTodo['DOWNLOAD ' + originalUrl] = messages.pending
+            global.urlsTodo['DOWNLOAD ' + originalUrl] = request({uri: originalUrl, headers})
+                .then((data) => fs.outputFile(pathUtil.getFilePath(originalUrl), data))
+                .catch(() => logUtil.fail(resourceType, originalUrl))
+                .then(() => {
+                    global.xhrs.push(originalUrl)
 
-                if (urlUtil.shouldDownload(resourceType, requestMethod, urlUtil.fix(originalUrl))) {
-                    logUtil.log(resourceType, originalUrl)
-                    request({uri: originalUrl, headers})
-                        .then((json) => fs.outputFile(pathUtil.getFilePath(originalUrl), json))
-                        .catch(() => logUtil.fail(resourceType, originalUrl))
-                }
-            })
-
+                })
+        }
+    }
 }

@@ -8,14 +8,13 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "cheerio": "^1.0.0-rc.2",
+    "archy": "^1.0.0",
+    "es6-promise-pool": "^2.5.0",
     "fs-extra": "^4.0.2",
     "nightmare": "^2.10.0",
     "nightmare-download-manager": "^0.2.4",
     "nightmare-inline-download": "^0.2.2",
-    "nightmare-xpath": "^2.0.2",
     "normalize-url": "^2.0.0",
-    "osmosis": "^1.1.5",
     "request": "^2.83.0",
     "request-promise": "^4.2.2",
     "tree-kill": "^1.2.0"
