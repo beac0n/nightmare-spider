@@ -8,7 +8,14 @@ const downloadsPath = path.join(__dirname, 'downloads')
 
 module.exports = {
     downloads: downloadsPath,
-    getDownloadPath: (filename) => path.join(downloadsPath, filename),
+    getDownloadPath: (filename) => {
+        if(!filename.includes('/')) {
+            return path.join(downloadsPath, filename)
+        }
+
+        const urlArray = filename.split('/')
+        return path.join(downloadsPath, urlArray[urlArray.length - 1])
+    },
     prepare: () => {
         fs.emptyDirSync(dataPath)
         fs.emptyDirSync(downloadsPath)

@@ -29,7 +29,7 @@ const downloadFile = (url, filePath, headers) => {
                 .on('error', reject)
         }))
         .then(() => {
-            logUtil.done(url)
+            logUtil.doneDownload(url)
             global.urlsTodo[urlDownloadKey] = messages.done
             return messages.done
         })
@@ -45,68 +45,52 @@ const nightmareOptions = {
     }
 }
 
-const getHrefRegex = () => /href="(\s*)([^"\s]*)(\s*)"/ig
+const hrefRegex = /href="(\s*)([^"\s]*)(\s*)"/ig
 
-const parseHtml = (regex, html, pathname, retryTimes) => {
-    const href = regex.exec(html)
-    if (href !== null) {
-        const hrefFixed = urlUtil.fix(href[2], pathname)
-        if (urlUtil.shouldVisitFixed(hrefFixed)) {
-            openSiteAndSet(hrefFixed, retryTimes, messages.pending)
+const isKilled = () => global.killed
+
+const openSite = (url, retryTimes = 0) => !isKilled() && wrapper(() => Nightmare(nightmareOptions)
+    .downloadManager()
+    .on('did-get-response-details', (event, status, newUrl, originalUrl, httpResponseCode, requestMethod, referrer, headers, resourceType) => {
+        if (urlUtil.shouldDownloadXhr(resourceType, requestMethod, originalUrl)) {
+            downloadFile(originalUrl, pathUtil.getFilePath(originalUrl), headers)
         }
-        parseHtml(regex, html, pathname, retryTimes)
-    }
-}
-
-const openSite = (url, retryTimes = 0) => global.killed
-    ? 'killed'
-    : wrapper(() => Nightmare(nightmareOptions)
-        .downloadManager()
-        .on('did-get-response-details', (event, status, newUrl, originalUrl, httpResponseCode, requestMethod, referrer, headers, resourceType) => {
-            if (urlUtil.shouldDownloadXhr(resourceType, requestMethod, originalUrl)) {
-                downloadFile(originalUrl, pathUtil.getFilePath(originalUrl), headers)
+    })
+    .on('download', (state, downloadItem) => {
+        if (state === 'started' && urlUtil.shouldDownload(downloadItem.url)) {
+            downloadFile(downloadItem.url, pathUtil.getDownloadPath(downloadItem.filename))
+        }
+    })
+    .goto(url)
+    .html(pathUtil.getFilePath(url), 'HTMLComplete')
+    .evaluate(() => ({html: document.body.outerHTML, pathname: document.location.pathname}))
+    .end()
+    .then(({html, pathname}) => {
+        let href = hrefRegex.exec(html)
+        while (href !== null) {
+            const hrefFixed = urlUtil.fix(href[2], pathname)
+            if (urlUtil.shouldVisitFixed(hrefFixed)) {
+                openSiteAndSet(hrefFixed, retryTimes, messages.pending)
             }
-        })
-        .on('download', (state, downloadItem) => {
-            if (state === 'started' && urlUtil.shouldDownload(downloadItem.url)) {
-                downloadFile(downloadItem.url, pathUtil.getDownloadPath(downloadItem.filename))
-            }
-        })
-        .goto(url)
-        .html(pathUtil.getFilePath(url), 'HTMLComplete')
-        .evaluate(() => ({html: document.body.outerHTML, pathname: document.location.pathname}))
-        .end()
-        .then(({html, pathname}) => {
-            const hrefRegex = getHrefRegex()
-
-            let href = hrefRegex.exec(html)
-            while (href !== null) {
-                const hrefFixed = urlUtil.fix(href[2], pathname)
-                if (urlUtil.shouldVisitFixed(hrefFixed)) {
-                    openSiteAndSet(hrefFixed, retryTimes, messages.pending)
-                }
-                href = hrefRegex.exec(html)
-            }
-        })
-        .then(() => {
-            logUtil.done(url)
-            return messages.done
-        })
-        .catch((error) => {
-            if (errorUtil.isTimeout(error)) {
-                global.urlsTodo[url] = messages.retry
-                return openSite(url, retryTimes + 1)
-            }
-            else if (errorUtil.isNavigationError(error) && urlUtil.shouldDownload(error.url)) {
-                const urlArray = error.url.split('/')
-                const fileName = urlArray[urlArray.length - 1]
-
-                downloadFile(error.url, pathUtil.getDownloadPath(fileName))
-            }
-            else {
-                throw error
-            }
-        }))
+            href = hrefRegex.exec(html)
+        }
+    })
+    .then(() => {
+        logUtil.done(url)
+        return messages.done
+    })
+    .catch((error) => {
+        if (errorUtil.isTimeout(error)) {
+            global.urlsTodo[url] = messages.retry
+            return openSite(url, retryTimes + 1)
+        }
+        else if (errorUtil.isNavigationError(error) && urlUtil.shouldDownload(error.url)) {
+            downloadFile(error.url, pathUtil.getDownloadPath(error.url))
+        }
+        else {
+            throw error
+        }
+    }))
 
 const openSiteAndSet = (url, retryTimes, preMessage = messages.pending) => {
     global.urlsTodo[url] = preMessage
@@ -118,9 +102,12 @@ global.urlsTodo = {}
 global.writeToDiskPromise = Promise.resolve()
 
 process.on('SIGINT', () => {
-    logUtil.kill()
     global.killed = true
-    kill(process.pid)
+    logUtil.log('killing in 5 seconds...', process.pid)
+    setTimeout(() => {
+        logUtil.log('killing now...')
+        kill(process.pid)
+    }, 5000)
 })
 
 pathUtil.prepare()
