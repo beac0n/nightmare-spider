@@ -1,6 +1,10 @@
 const {URL} = require('url')
 const normalizeUrlBase = require('normalize-url')
-const normalizeUrlConfig = {stripWWW: false, removeTrailingSlash: false}
+const normalizeUrlConfig = {
+    stripWWW: false,
+    removeTrailingSlash: false,
+    removeQueryParameters: [/[\s\S]*/ig]
+}
 const normalizeUrl = (url) => normalizeUrlBase(url, normalizeUrlConfig)
 
 const {domain, ssl, start} = require(process.argv[2] || './config.json')
@@ -18,7 +22,7 @@ const urlMatchesDomain = (url) => domainRegex.test(url) || subDomainRegex.test(u
 const XHR = 'xhr'
 const GET = 'GET'
 
-const fixUrl = (url, pathname) => {
+const fix = (url, pathname) => {
     let newUrl = url.trim()
     if (newUrl.startsWith(HTTP)) {
         return normalizeUrl(newUrl)
@@ -27,15 +31,21 @@ const fixUrl = (url, pathname) => {
     return normalizeUrl(getRealHref(newUrl, pathname))
 }
 
-const getDownloadUrl = (url) => 'DOWNLOAD ' + url
+const getUrlDownloadKey = (url) => url + ' DOWNLOAD'
+
+const shouldDownload = (url) => url
+    && !global.urlsTodo[getUrlDownloadKey(url)]
+    && urlMatchesDomain(url)
 
 module.exports = {
-    fix: fixUrl,
-    getDownloadUrl,
-    shouldVisitFixed: (url) => urlMatchesDomain(url) && !global.urlsTodo[url],
-    shouldDownload: (resourceType, requestMethod, url) => !global.urlsTodo[getDownloadUrl(url)]
+    getUrlDownloadKey,
+    fix,
+    shouldVisitFixed: (url) => url
+        && urlMatchesDomain(url)
+        && !global.urlsTodo[url],
+    shouldDownload,
+    shouldDownloadXhr: (resourceType, requestMethod, url) => shouldDownload(url)
         && resourceType === XHR
-        && requestMethod === GET
-        && urlMatchesDomain(fixUrl(url)),
+        && requestMethod === GET,
     startUrl: normalizeUrl(ENC_SCHEME + '://' + start),
 }

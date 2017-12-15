@@ -16,7 +16,7 @@
     "nightmare-inline-download": "^0.2.2",
     "normalize-url": "^2.0.0",
     "request": "^2.83.0",
-    "request-promise": "^4.2.2",
+    "request-promise-native": "^1.0.5",
     "tree-kill": "^1.2.0"
   }
 }
