@@ -1,10 +1,13 @@
 {
   "name": "nightmare-spider",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "main": "index.js",
   "author": "beac0n <mcschempp@gmx.de>",
   "license": "MIT",
   "repository": "https://github.com/beac0n/nightmare-spider.git",
+  "bin": {
+    "nightmare-spider": "./index.js"
+  },
   "engines": {
     "node": ">=9.2.0"
   },
