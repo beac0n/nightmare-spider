@@ -7,7 +7,7 @@ const normalizeUrlConfig = {
 }
 const normalizeUrl = (url) => normalizeUrlBase(url, normalizeUrlConfig)
 
-const {domain, ssl, start} = require(process.argv[2] || './config.json')
+const {domain, ssl, start} = require(process.argv[2])
 
 const HTTP = 'http'
 const HTTPS = 'https'

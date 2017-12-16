@@ -17,6 +17,7 @@ This file must include tree properties and should look like this:
 {
   "ssl": true, // use http oder https?
   "domain": "ethereum.org", // only crawl links on this domain
-  "start": "ethereum.org" // start to crawl here
+  "start": "ethereum.org", // start to crawl here
+   "path": "/home/foo/test" // files are saved here - must be absolute
 }
 ```

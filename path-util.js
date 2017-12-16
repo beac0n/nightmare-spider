@@ -3,13 +3,17 @@ const fs = require('fs-extra')
 
 const HTTP_OR_HTTPS_REGEX = new RegExp('^https?://', 'ig')
 
-const dataPath = path.join(__dirname, 'data')
-const downloadsPath = path.join(__dirname, 'downloads')
+const config = require(process.argv[2])
+
+const savePath = config.path || __dirname
+
+const dataPath = path.join(savePath, 'data')
+const downloadsPath = path.join(savePath, 'downloads')
 
 module.exports = {
     downloads: downloadsPath,
     getDownloadPath: (filename) => {
-        if(!filename.includes('/')) {
+        if (!filename.includes('/')) {
             return path.join(downloadsPath, filename)
         }
 
