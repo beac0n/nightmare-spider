@@ -2,5 +2,6 @@
   "retry": "retrying",
   "pending": "pending",
   "done": "done",
-  "download": "download"
+  "download": "download",
+  "start": "start"
 }

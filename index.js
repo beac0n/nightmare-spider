@@ -47,6 +47,19 @@ const nightmareOptions = {
 
 const hrefRegex = /href="(\s*)([^"\s]*)(\s*)"/ig
 
+const getParseRegexPromise = (regex, html, retryTimes, pathname) => new Promise((resolve, reject) => {
+    const href = regex.exec(html)
+    if (href !== null) {
+        const hrefFixed = urlUtil.fix(href[2], pathname)
+        if (urlUtil.shouldVisitFixed(hrefFixed)) {
+            openSiteAndSet(hrefFixed, retryTimes, messages.pending)
+        }
+        resolve(regex)
+    } else {
+        reject(messages.done)
+    }
+}).then((newRegex) => getParseRegexPromise(newRegex, html, retryTimes, pathname))
+
 const isKilled = () => global.killed
 
 const openSite = (url, retryTimes = 0) => !isKilled() && wrapper(() => Nightmare(nightmareOptions)
@@ -65,16 +78,11 @@ const openSite = (url, retryTimes = 0) => !isKilled() && wrapper(() => Nightmare
     .html(pathUtil.getFilePath(url), 'HTMLComplete')
     .evaluate(() => ({html: document.body.outerHTML, pathname: document.location.pathname}))
     .end()
-    .then(({html, pathname}) => {
-        let href = hrefRegex.exec(html)
-        while (href !== null) {
-            const hrefFixed = urlUtil.fix(href[2], pathname)
-            if (urlUtil.shouldVisitFixed(hrefFixed)) {
-                openSiteAndSet(hrefFixed, retryTimes, messages.pending)
-            }
-            href = hrefRegex.exec(html)
+    .then(({html, pathname}) => getParseRegexPromise(hrefRegex, html, retryTimes, pathname).catch((reason) => {
+        if (reason !== messages.done) {
+            logUtil.log(reason)
         }
-    })
+    }))
     .then(() => {
         logUtil.done(url)
         return messages.done
@@ -104,7 +112,7 @@ global.writeToDiskPromise = Promise.resolve()
 process.on('SIGINT', () => {
     global.killed = true
     logUtil.log('killing in 5 seconds...', process.pid)
-    setTimeout(() => {
+    setInterval(() => {
         logUtil.log('killing now...')
         kill(process.pid)
     }, 5000)
