@@ -1,9 +1,12 @@
 {
-  "name": "cmc-spider",
+  "name": "spider",
   "version": "0.0.1",
   "main": "index.js",
   "author": "beac0n",
   "license": "MIT",
+  "engines": {
+    "node": ">=9.2.0"
+  },
   "scripts": {
     "start": "node index.js"
   },
