@@ -7,11 +7,18 @@ Html pages and their resources go to `/data`.
 Everything else goes to `/download`.
 
 # Usage
-run the script (`npm run start`) and provide the path to your `config.json` file:
+
+install the script:
 ```
-npm run start -- "/path/to/config.json"
+npm install -g nightmare-spider
 ```
-This file must include tree properties and should look like this:
+
+run the script with config json
+```
+nightmare-spider /path/to/config.json
+```
+
+This `config.json` must include three properties and should look like this:
 
 ```json
 {
