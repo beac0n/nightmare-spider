@@ -4,6 +4,7 @@
   "main": "index.js",
   "author": "beac0n <mcschempp@gmx.de>",
   "license": "MIT",
+  "repository": "https://github.com/beac0n/nightmare-spider.git",
   "engines": {
     "node": ">=9.2.0"
   },
