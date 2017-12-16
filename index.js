@@ -6,6 +6,8 @@ const request = require('request')
 const Nightmare = require('nightmare')
 require('nightmare-download-manager')(Nightmare)
 
+const {maxConnections = 10} = require(process.argv[2])
+
 const urlUtil = require('./url-util')
 const logUtil = require('./log-util')
 const pathUtil = require('./path-util')
@@ -14,7 +16,7 @@ const errorUtil = require('./error-util')
 const messages = require('./messages')
 
 const PromisePoolWrapper = require('./promise-pool-wrapper')
-const wrapper = PromisePoolWrapper.create(10)
+const wrapper = PromisePoolWrapper.create(maxConnections)
 
 const downloadFile = (url, filePath, headers) => {
     if (global.killed) {

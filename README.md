@@ -18,13 +18,14 @@ run the script with config json
 nightmare-spider /path/to/config.json
 ```
 
-This `config.json` must include three properties and should look like this:
+This `config.json` should look like this:
 
-```json
+```
 {
-  "ssl": true, // use http oder https?
+  "ssl": true, // use http oder https? - default http
   "domain": "ethereum.org", // only crawl links on this domain
   "start": "ethereum.org", // start to crawl here
-   "path": "/home/foo/test" // files are saved here - must be absolute
+  "path": "/home/foo/test", // files are saved here - must be absolute
+  "maxConnections": 10 // how many connections - default: 10
 }
 ```
