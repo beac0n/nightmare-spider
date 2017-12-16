@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const kill = require('tree-kill')
 const fs = require('fs-extra')
 const request = require('request')
