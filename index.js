@@ -22,8 +22,6 @@ const nightmareOptions = {
     }
 }
 
-const hrefRegex = /href="(\s*)([^"\s]*)(\s*)"/ig
-
 const getParseRegexPromise = (regex, html, retryTimes, pathname) => new Promise((resolve, reject) => {
     const href = regex.exec(html)
     if (href !== null) {
@@ -37,6 +35,7 @@ const getParseRegexPromise = (regex, html, retryTimes, pathname) => new Promise(
     }
 }).then((newRegex) => getParseRegexPromise(newRegex, html, retryTimes, pathname))
 
+const hrefRegex = /href="(\s*)([^"\s]*)(\s*)"/ig
 const openSite = (url, retryTimes = 0) => !globalUtil.isKilled() && wrapper(() => Nightmare(nightmareOptions)
     .downloadManager()
     .on('did-get-response-details', (event, status, newUrl, originalUrl, httpResponseCode, requestMethod, referrer, headers, resourceType) => {
