@@ -1,47 +1,20 @@
 #!/usr/bin/env node
 
-const kill = require('tree-kill')
-const fs = require('fs-extra')
-const request = require('request')
 const Nightmare = require('nightmare')
 require('nightmare-download-manager')(Nightmare)
 
-const {maxConnections = 10} = require(process.argv[2])
-
+const globalUtil = require('./global-util')
 const urlUtil = require('./url-util')
 const logUtil = require('./log-util')
 const pathUtil = require('./path-util')
 const errorUtil = require('./error-util')
+const downloadUtil = require('./download-util')
 
 const messages = require('./messages')
 
 const PromisePoolWrapper = require('./promise-pool-wrapper')
-const wrapper = PromisePoolWrapper.create(maxConnections)
+const wrapper = PromisePoolWrapper.create(globalUtil.maxConnections)
 
-const downloadFile = (url, filePath, headers) => {
-    if (global.killed) {
-        return
-    }
-
-    const urlDownloadKey = urlUtil.getUrlDownloadKey(url)
-    global.urlsTodo[urlDownloadKey] = messages.pending
-    global.writeToDiskPromise = global.writeToDiskPromise
-        .then(() => new Promise((resolve, reject) => {
-            request({uri: url, headers})
-                .pipe(fs.createWriteStream(filePath))
-                .on('finish', resolve)
-                .on('error', reject)
-        }))
-        .then(() => {
-            logUtil.doneDownload(url)
-            global.urlsTodo[urlDownloadKey] = messages.done
-            return messages.done
-        })
-        .catch((reason) => {
-            global.urlsTodo[urlDownloadKey] = reason
-            return reason
-        })
-}
 const nightmareOptions = {
     show: false, // DO NOT SET THIS TO TRUE!!!
     paths: {
@@ -64,18 +37,16 @@ const getParseRegexPromise = (regex, html, retryTimes, pathname) => new Promise(
     }
 }).then((newRegex) => getParseRegexPromise(newRegex, html, retryTimes, pathname))
 
-const isKilled = () => global.killed
-
-const openSite = (url, retryTimes = 0) => !isKilled() && wrapper(() => Nightmare(nightmareOptions)
+const openSite = (url, retryTimes = 0) => !globalUtil.isKilled() && wrapper(() => Nightmare(nightmareOptions)
     .downloadManager()
     .on('did-get-response-details', (event, status, newUrl, originalUrl, httpResponseCode, requestMethod, referrer, headers, resourceType) => {
         if (urlUtil.shouldDownloadXhr(resourceType, requestMethod, originalUrl)) {
-            downloadFile(originalUrl, pathUtil.getFilePath(originalUrl), headers)
+            downloadUtil.downloadFile(originalUrl, pathUtil.getFilePath(originalUrl), headers)
         }
     })
     .on('download', (state, downloadItem) => {
         if (state === 'started' && urlUtil.shouldDownload(downloadItem.url)) {
-            downloadFile(downloadItem.url, pathUtil.getDownloadPath(downloadItem.filename))
+            downloadUtil.downloadFile(downloadItem.url, pathUtil.getDownloadPath(downloadItem.filename))
         }
     })
     .goto(url)
@@ -97,7 +68,7 @@ const openSite = (url, retryTimes = 0) => !isKilled() && wrapper(() => Nightmare
             return openSite(url, retryTimes + 1)
         }
         else if (errorUtil.isNavigationError(error) && urlUtil.shouldDownload(error.url)) {
-            downloadFile(error.url, pathUtil.getDownloadPath(error.url))
+            downloadUtil.downloadFile(error.url, pathUtil.getDownloadPath(error.url))
         }
         else {
             throw error
@@ -108,20 +79,5 @@ const openSiteAndSet = (url, retryTimes, preMessage = messages.pending) => {
     global.urlsTodo[url] = preMessage
     global.urlsTodo[url] = openSite(url, retryTimes)
 }
-
-global.killed = false
-global.urlsTodo = {}
-global.writeToDiskPromise = Promise.resolve()
-
-process.on('SIGINT', () => {
-    global.killed = true
-    logUtil.log('killing in 5 seconds...', process.pid)
-    setInterval(() => {
-        logUtil.log('killing now...')
-        kill(process.pid)
-    }, 5000)
-})
-
-pathUtil.prepare()
 
 openSiteAndSet(urlUtil.startUrl, 0, messages.pending)
